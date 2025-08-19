@@ -1,0 +1,908 @@
+package com.nakanostay.presentation.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nakanostay.data.models.*
+import com.nakanostay.presentation.viewmodels.RoomDetailViewModel
+import com.nakanostay.ui.theme.*
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RoomDetailScreen(
+    roomWithHotel: RoomWithHotel,
+    viewModel: RoomDetailViewModel,
+    onBackClick: () -> Unit
+) {
+    val availabilityState by viewModel.availabilityState.collectAsStateWithLifecycle()
+    val bookingState by viewModel.bookingState.collectAsStateWithLifecycle()
+    val selectedCheckIn by viewModel.selectedCheckIn.collectAsStateWithLifecycle()
+    val selectedCheckOut by viewModel.selectedCheckOut.collectAsStateWithLifecycle()
+    val showBookingDialog by viewModel.showBookingDialog.collectAsStateWithLifecycle()
+
+    // Initialize room data
+    LaunchedEffect(roomWithHotel) {
+        viewModel.setRoomWithHotel(roomWithHotel)
+        // Load availability for next 3 months
+        val startDate = LocalDate.now()
+        val endDate = startDate.plusMonths(3)
+        viewModel.loadRoomAvailability(startDate, endDate)
+    }
+
+    // Show success dialog when booking is created
+    LaunchedEffect(bookingState.data) {
+        if (bookingState.data != null) {
+            // Booking successful, you might want to navigate or show success message
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LightPink)
+    ) {
+        // Top Bar
+        TopAppBar(
+            title = { Text("Detalles de Habitación") },
+            navigationIcon = {
+                IconButton(onClick = onBackClick) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = PrimaryPurple,
+                titleContentColor = Color.White,
+                navigationIconContentColor = Color.White
+            )
+        )
+
+        // Content
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Room Info Card
+            RoomInfoCard(roomWithHotel = roomWithHotel)
+
+            // Hotel Info Card
+            HotelInfoCard(hotel = roomWithHotel.hotel)
+
+            // Date Selection Card
+            DateSelectionCard(
+                viewModel = viewModel,
+                availabilityState = availabilityState,
+                selectedCheckIn = selectedCheckIn,
+                selectedCheckOut = selectedCheckOut
+            )
+
+            // Booking Summary Card (when dates are selected)
+            if (selectedCheckIn != null && selectedCheckOut != null) {
+                BookingSummaryCard(
+                    room = roomWithHotel.room,
+                    checkIn = selectedCheckIn!!,
+                    checkOut = selectedCheckOut!!,
+                    onBookNowClick = viewModel::showBookingDialog
+                )
+            }
+        }
+    }
+
+    // Booking Dialog
+    if (showBookingDialog) {
+        BookingDialog(
+            viewModel = viewModel,
+            roomWithHotel = roomWithHotel,
+            bookingState = bookingState,
+            onDismiss = viewModel::hideBookingDialog
+        )
+    }
+
+    // Success Dialog
+    bookingState.data?.let { booking ->
+        BookingSuccessDialog(
+            booking = booking,
+            onDismiss = {
+                viewModel.clearBookingState()
+                onBackClick() // Go back to rooms list
+            }
+        )
+    }
+}
+
+@Composable
+private fun RoomInfoCard(roomWithHotel: RoomWithHotel) {
+    val room = roomWithHotel.room
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Habitación ${room.roomNumber}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentPurple
+                    )
+
+                    room.roomType?.let { type ->
+                        Text(
+                            text = type,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = OnSurfaceLight.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                // Availability indicator
+                Surface(
+                    color = if (room.isAvailable) SuccessGreen else ErrorRed,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = if (room.isAvailable) "Disponible" else "No disponible",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Price
+            Row(
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Text(
+                    text = "$${room.pricePerNight}",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = AccentPurple
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "por noche",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = OnSurfaceLight.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HotelInfoCard(hotel: Hotel) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "Información del Hotel",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = AccentPurple
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Hotel name and stars
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = hotel.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+
+                hotel.stars?.let { stars ->
+                    Row {
+                        repeat(stars) {
+                            Text(text = "⭐", fontSize = 16.sp)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Address
+            Row(
+                verticalAlignment = Alignment.Top
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = PrimaryPink,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = hotel.address,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    hotel.city?.let { city ->
+                        Text(
+                            text = city,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = OnSurfaceLight.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Email
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Email,
+                    contentDescription = null,
+                    tint = PrimaryPink,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = hotel.email,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DateSelectionCard(
+    viewModel: RoomDetailViewModel,
+    availabilityState: UiState<RoomAvailability>,
+    selectedCheckIn: LocalDate?,
+    selectedCheckOut: LocalDate?
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "Seleccionar Fechas",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = AccentPurple
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            when {
+                availabilityState.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = PrimaryPurple)
+                    }
+                }
+
+                availabilityState.error != null -> {
+                    Text(
+                        text = "Error al cargar disponibilidad: ${availabilityState.error}",
+                        color = ErrorRed,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                else -> {
+                    // Date selection UI
+                    SimpleDatePicker(
+                        viewModel = viewModel,
+                        selectedCheckIn = selectedCheckIn,
+                        selectedCheckOut = selectedCheckOut
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimpleDatePicker(
+    viewModel: RoomDetailViewModel,
+    selectedCheckIn: LocalDate?,
+    selectedCheckOut: LocalDate?
+) {
+    var showCheckInPicker by remember { mutableStateOf(false) }
+    var showCheckOutPicker by remember { mutableStateOf(false) }
+
+    Column {
+        // Check-in date
+        OutlinedButton(
+            onClick = { showCheckInPicker = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = selectedCheckIn?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                        ?: "Seleccionar fecha de entrada"
+                )
+                Icon(Icons.Default.DateRange, contentDescription = null)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Check-out date
+        OutlinedButton(
+            onClick = { showCheckOutPicker = true },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = selectedCheckIn != null
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = selectedCheckOut?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                        ?: "Seleccionar fecha de salida"
+                )
+                Icon(Icons.Default.DateRange, contentDescription = null)
+            }
+        }
+
+        // Available dates info
+        if (selectedCheckIn != null || selectedCheckOut != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Surface(
+                color = InfoBlue.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "💡 Solo se muestran las fechas disponibles para reserva",
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InfoBlue
+                )
+            }
+        }
+    }
+
+    // Simple date picker dialogs (in a real implementation, you'd use a proper date picker)
+    if (showCheckInPicker) {
+        SimpleDatePickerDialog(
+            title = "Fecha de Entrada",
+            onDateSelected = { date ->
+                viewModel.selectCheckInDate(date)
+                showCheckInPicker = false
+            },
+            onDismiss = { showCheckInPicker = false },
+            viewModel = viewModel,
+            isCheckOut = false
+        )
+    }
+
+    if (showCheckOutPicker) {
+        SimpleDatePickerDialog(
+            title = "Fecha de Salida",
+            onDateSelected = { date ->
+                viewModel.selectCheckOutDate(date)
+                showCheckOutPicker = false
+            },
+            onDismiss = { showCheckOutPicker = false },
+            viewModel = viewModel,
+            isCheckOut = true
+        )
+    }
+}
+
+@Composable
+private fun SimpleDatePickerDialog(
+    title: String,
+    onDateSelected: (LocalDate) -> Unit,
+    onDismiss: () -> Unit,
+    viewModel: RoomDetailViewModel,
+    isCheckOut: Boolean
+) {
+    val availableDates by viewModel.availableDates.collectAsStateWithLifecycle()
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.padding(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Show next 30 available dates
+                val today = LocalDate.now()
+                val availableDatesToShow = if (isCheckOut) {
+                    availableDates.filter { date ->
+                        viewModel.canSelectCheckOutDate(date)
+                    }.take(15)
+                } else {
+                    availableDates.filter { date ->
+                        date >= today
+                    }.take(15)
+                }
+
+                if (availableDatesToShow.isEmpty()) {
+                    Text(
+                        text = "No hay fechas disponibles",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = OnSurfaceLight.copy(alpha = 0.7f)
+                    )
+                } else {
+                    availableDatesToShow.chunked(2).forEach { dateRow ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            dateRow.forEach { date ->
+                                OutlinedButton(
+                                    onClick = { onDateSelected(date) },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = date.format(DateTimeFormatter.ofPattern("dd/MM")),
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                            // Fill remaining space if odd number of dates
+                            if (dateRow.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookingSummaryCard(
+    room: Room,
+    checkIn: LocalDate,
+    checkOut: LocalDate,
+    onBookNowClick: () -> Unit
+) {
+    val nights = ChronoUnit.DAYS.between(checkIn, checkOut).toInt()
+    val totalPrice = room.pricePerNight.multiply(nights.toBigDecimal())
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SecondaryPink),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "Resumen de Reserva",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = AccentPurple
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Dates
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Entrada:")
+                Text(
+                    text = checkIn.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Salida:")
+                Text(
+                    text = checkOut.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 12.dp))
+
+            // Pricing
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("$nights noche${if (nights > 1) "s" else ""} × ${room.pricePerNight}")
+                Text("${totalPrice}")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Total",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${totalPrice}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentPurple
+                    )
+                }
+
+                Button(
+                    onClick = onBookNowClick,
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)
+                ) {
+                    Text("Reservar Ahora")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookingDialog(
+    viewModel: RoomDetailViewModel,
+    roomWithHotel: RoomWithHotel,
+    bookingState: UiState<Booking>,
+    onDismiss: () -> Unit
+) {
+    val bookingForm by viewModel.bookingForm.collectAsStateWithLifecycle()
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Crear Reserva",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentPurple
+                    )
+
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Form fields
+                OutlinedTextField(
+                    value = bookingForm.guestName,
+                    onValueChange = { viewModel.updateBookingFormField(BookingFormField.GUEST_NAME, it) },
+                    label = { Text("Nombre completo *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = bookingForm.guestDni,
+                    onValueChange = { viewModel.updateBookingFormField(BookingFormField.GUEST_DNI, it) },
+                    label = { Text("Cédula *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text("1234567890") }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = bookingForm.guestEmail,
+                    onValueChange = { viewModel.updateBookingFormField(BookingFormField.GUEST_EMAIL, it) },
+                    label = { Text("Email *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text("ejemplo@correo.com") }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = bookingForm.guestPhone,
+                    onValueChange = { viewModel.updateBookingFormField(BookingFormField.GUEST_PHONE, it) },
+                    label = { Text("Teléfono (opcional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text("0999999999") }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = bookingForm.guests.toString(),
+                    onValueChange = { viewModel.updateBookingFormField(BookingFormField.GUESTS, it) },
+                    label = { Text("Número de huéspedes *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Booking summary
+                Surface(
+                    color = LightPink,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Resumen",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text("Habitación: ${roomWithHotel.room.roomNumber}")
+                        Text("Hotel: ${roomWithHotel.hotel.name}")
+
+                        bookingForm.checkIn?.let { checkIn ->
+                            bookingForm.checkOut?.let { checkOut ->
+                                val nights = ChronoUnit.DAYS.between(checkIn, checkOut).toInt()
+                                val total = roomWithHotel.room.pricePerNight.multiply(nights.toBigDecimal())
+
+                                Text("Fechas: ${checkIn.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))} - ${checkOut.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}")
+                                Text("$nights noche${if (nights > 1) "s" else ""}")
+                                Text(
+                                    text = "Total: $total",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AccentPurple
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Error message
+                if (bookingState.error != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = bookingState.error,
+                        color = ErrorRed,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        enabled = !bookingState.isLoading
+                    ) {
+                        Text("Cancelar")
+                    }
+
+                    Button(
+                        onClick = viewModel::createBooking,
+                        modifier = Modifier.weight(1f),
+                        enabled = !bookingState.isLoading,
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)
+                    ) {
+                        if (bookingState.isLoading) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Text("Creando...")
+                            }
+                        } else {
+                            Text("Reservar")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookingSuccessDialog(
+    booking: Booking,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Success icon
+                Surface(
+                    color = SuccessGreen,
+                    shape = RoundedCornerShape(50.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .padding(12.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "¡Reserva Exitosa!",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = SuccessGreen
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Tu reserva ha sido creada correctamente",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OnSurfaceLight.copy(alpha = 0.7f)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Booking details
+                Surface(
+                    color = LightPink,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Código de Reserva",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = booking.bookingCode,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentPurple
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text("Huésped: ${booking.guestName}")
+                        Text("Email: ${booking.guestEmail}")
+                        Text("Check-in: ${booking.checkIn.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}")
+                        Text("Check-out: ${booking.checkOut.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}")
+                        Text("Total: ${booking.total}")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Guarda este código para consultar tu reserva más tarde",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OnSurfaceLight.copy(alpha = 0.7f)
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)
+                ) {
+                    Text("Entendido")
+                }
+            }
+        }
+    }
+}
