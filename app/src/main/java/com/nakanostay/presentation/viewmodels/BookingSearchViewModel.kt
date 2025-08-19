@@ -2,13 +2,20 @@ package com.nakanostay.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nakanostay.data.models.*
+import com.nakanostay.data.models.BookingStatus
+import com.nakanostay.data.models.Booking
+import com.nakanostay.data.models.Room
+import com.nakanostay.data.models.UiState
 import com.nakanostay.data.repository.BookingRepository
-import kotlinx.coroutines.flow.*
+import com.nakanostay.data.repository.RoomRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class BookingSearchViewModel(
-    private val bookingRepository: BookingRepository
+    private val bookingRepository: BookingRepository,
+    private val roomRepository: RoomRepository
 ) : ViewModel() {
 
     // Search form state
@@ -26,6 +33,8 @@ class BookingSearchViewModel(
     // Show cancellation dialog
     private val _showCancellationDialog = MutableStateFlow(false)
     val showCancellationDialog: StateFlow<Boolean> = _showCancellationDialog.asStateFlow()
+
+    private var roomsById: Map<Long, Room> = emptyMap()
 
     fun updateSearchForm(form: BookingSearchForm) {
         _searchForm.value = form
@@ -53,7 +62,13 @@ class BookingSearchViewModel(
             bookingRepository.getBookingByCode(form.bookingCode, form.guestDni).collect { result ->
                 if (result.isSuccess) {
                     val booking = result.getOrNull()
-                    _bookingState.value = UiState(data = booking)
+                    val enrichedBooking = try {
+                        booking?.let { enrichBookingWithRooms(it) }
+                    } catch (e: Exception) {
+                        booking
+                    }
+
+                    _bookingState.value = UiState(data = enrichedBooking)
                 } else {
                     _bookingState.value = UiState(
                         error = result.exceptionOrNull()?.message ?: "Reserva no encontrada"
@@ -87,7 +102,6 @@ class BookingSearchViewModel(
                 if (result.isSuccess) {
                     val cancelledBooking = result.getOrNull()
                     _cancellationState.value = UiState(data = cancelledBooking)
-                    // Update the main booking state with cancelled booking
                     _bookingState.value = UiState(data = cancelledBooking)
                     _showCancellationDialog.value = false
                 } else {
@@ -124,7 +138,6 @@ class BookingSearchViewModel(
         return booking.status == BookingStatus.PENDING || booking.status == BookingStatus.CONFIRMED
     }
 
-    // Helper functions for UI
     fun getBookingStatusColor(status: BookingStatus): androidx.compose.ui.graphics.Color {
         return when (status) {
             BookingStatus.PENDING -> com.nakanostay.ui.theme.WarningOrange
@@ -141,6 +154,31 @@ class BookingSearchViewModel(
             BookingStatus.CANCELLED -> "Cancelada"
             BookingStatus.COMPLETED -> "Completada"
         }
+    }
+
+    private suspend fun ensureRoomsCache(): Map<Long, Room> {
+        if (roomsById.isNotEmpty()) return roomsById
+
+        roomRepository.getAllRooms().collect { roomsResult ->
+            if (roomsResult.isSuccess) {
+                val list = roomsResult.getOrNull().orEmpty()
+                roomsById = list.associateBy { it.id }
+            } else {
+                roomsById = emptyMap()
+            }
+        }
+        return roomsById
+    }
+
+
+    private suspend fun enrichBookingWithRooms(booking: Booking): Booking {
+        val cache = ensureRoomsCache()
+        val enrichedDetails = booking.details.map { detail ->
+            detail.copy(
+                room = cache[detail.roomId]
+            )
+        }
+        return booking.copy(details = enrichedDetails)
     }
 }
 

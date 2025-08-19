@@ -8,5 +8,6 @@ data class BookingDetail(
     val roomId: Long,
     val guests: Int,
     @SerializedName("price_at_booking")
-    val priceAtBooking: BigDecimal
+    val priceAtBooking: BigDecimal,
+    val room: Room? = null
 )

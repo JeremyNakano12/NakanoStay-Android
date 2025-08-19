@@ -1,12 +1,31 @@
 package com.nakanostay.presentation.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ConfirmationNumber
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Hotel
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,10 +36,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.nakanostay.data.models.*
+import com.nakanostay.data.models.Booking
+import com.nakanostay.data.models.BookingStatus
+import com.nakanostay.data.models.UiState
 import com.nakanostay.presentation.viewmodels.BookingSearchForm
 import com.nakanostay.presentation.viewmodels.BookingSearchViewModel
-import com.nakanostay.ui.theme.*
+import com.nakanostay.ui.theme.AccentPurple
+import com.nakanostay.ui.theme.OnSurfaceLight
+import com.nakanostay.ui.theme.ErrorRed
+import com.nakanostay.ui.theme.SecondaryPink
+import com.nakanostay.ui.theme.LightPink
+import com.nakanostay.ui.theme.PrimaryPurple
+import com.nakanostay.ui.theme.PrimaryPink
+import com.nakanostay.ui.theme.WarningOrange
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
@@ -39,7 +67,6 @@ fun BookingSearchScreen(
             .fillMaxSize()
             .background(LightPink)
     ) {
-        // Top Bar
         TopAppBar(
             title = { Text("Consultar Reserva") },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -48,7 +75,6 @@ fun BookingSearchScreen(
             )
         )
 
-        // Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -56,7 +82,6 @@ fun BookingSearchScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Search Form Card
             SearchFormCard(
                 searchForm = searchForm,
                 onBookingCodeChange = viewModel::updateBookingCode,
@@ -66,7 +91,6 @@ fun BookingSearchScreen(
                 isLoading = bookingState.isLoading
             )
 
-            // Results
             when {
                 bookingState.isLoading -> {
                     LoadingCard()
@@ -90,7 +114,6 @@ fun BookingSearchScreen(
         }
     }
 
-    // Cancellation Confirmation Dialog
     if (showCancellationDialog) {
         CancellationConfirmationDialog(
             booking = bookingState.data!!,
@@ -147,7 +170,6 @@ private fun SearchFormCard(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Booking Code Field
             OutlinedTextField(
                 value = searchForm.bookingCode,
                 onValueChange = onBookingCodeChange,
@@ -162,7 +184,6 @@ private fun SearchFormCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // DNI Field
             OutlinedTextField(
                 value = searchForm.guestDni,
                 onValueChange = onGuestDniChange,
@@ -177,7 +198,6 @@ private fun SearchFormCard(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -307,7 +327,6 @@ private fun BookingResultCard(
         Column(
             modifier = Modifier.padding(20.dp)
         ) {
-            // Header with status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -344,7 +363,6 @@ private fun BookingResultCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Guest Information
             BookingInfoSection(
                 title = "Información del Huésped",
                 icon = Icons.Default.Person
@@ -359,7 +377,6 @@ private fun BookingResultCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Booking Details
             BookingInfoSection(
                 title = "Detalles de la Reserva",
                 icon = Icons.Default.CalendarMonth
@@ -375,7 +392,6 @@ private fun BookingResultCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Room Details
             BookingInfoSection(
                 title = "Habitaciones",
                 icon = Icons.Default.Hotel
@@ -389,7 +405,7 @@ private fun BookingResultCard(
                             modifier = Modifier.padding(12.dp)
                         ) {
                             Text(
-                                text = "Habitación #${detail.roomId}",
+                                text = "Habitación ${detail.room?.roomNumber ?: detail.roomId}",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
@@ -429,7 +445,6 @@ private fun BookingResultCard(
                 }
             }
 
-            // Cancel button (only for cancellable bookings)
             if (booking.status == BookingStatus.PENDING || booking.status == BookingStatus.CONFIRMED) {
                 Spacer(modifier = Modifier.height(20.dp))
 

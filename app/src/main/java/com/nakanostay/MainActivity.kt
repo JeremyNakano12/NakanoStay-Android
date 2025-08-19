@@ -165,7 +165,7 @@ fun NakanoStayApp(
             // Booking Search Screen
             composable("booking_search") {
                 val bookingSearchViewModel: BookingSearchViewModel = viewModel {
-                    BookingSearchViewModel(bookingRepository)
+                    BookingSearchViewModel(bookingRepository, roomRepository)
                 }
 
                 BookingSearchScreen(

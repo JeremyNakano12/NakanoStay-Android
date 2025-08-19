@@ -1,12 +1,28 @@
 package com.nakanostay.presentation.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,9 +34,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.nakanostay.data.models.*
+import com.nakanostay.data.models.BookingFormField
+import com.nakanostay.data.models.Hotel
+import com.nakanostay.data.models.RoomWithHotel
+import com.nakanostay.data.models.UiState
+import com.nakanostay.data.models.RoomAvailability
+import com.nakanostay.data.models.Booking
+import com.nakanostay.data.models.Room
 import com.nakanostay.presentation.viewmodels.RoomDetailViewModel
-import com.nakanostay.ui.theme.*
+import com.nakanostay.ui.theme.AccentPurple
+import com.nakanostay.ui.theme.ErrorRed
+import com.nakanostay.ui.theme.LightPink
+import com.nakanostay.ui.theme.OnSurfaceLight
+import com.nakanostay.ui.theme.PrimaryPurple
+import com.nakanostay.ui.theme.SuccessGreen
+import com.nakanostay.ui.theme.PrimaryPink
+import com.nakanostay.ui.theme.InfoBlue
+import com.nakanostay.ui.theme.SecondaryPink
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -38,7 +68,6 @@ fun RoomDetailScreen(
     val selectedCheckOut by viewModel.selectedCheckOut.collectAsStateWithLifecycle()
     val showBookingDialog by viewModel.showBookingDialog.collectAsStateWithLifecycle()
 
-    // Initialize room data
     LaunchedEffect(roomWithHotel) {
         viewModel.setRoomWithHotel(roomWithHotel)
         // Load availability for next 3 months
@@ -47,10 +76,8 @@ fun RoomDetailScreen(
         viewModel.loadRoomAvailability(startDate, endDate)
     }
 
-    // Show success dialog when booking is created
     LaunchedEffect(bookingState.data) {
         if (bookingState.data != null) {
-            // Booking successful, you might want to navigate or show success message
         }
     }
 
@@ -59,7 +86,6 @@ fun RoomDetailScreen(
             .fillMaxSize()
             .background(LightPink)
     ) {
-        // Top Bar
         TopAppBar(
             title = { Text("Detalles de Habitación") },
             navigationIcon = {
@@ -74,7 +100,6 @@ fun RoomDetailScreen(
             )
         )
 
-        // Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -82,13 +107,10 @@ fun RoomDetailScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Room Info Card
             RoomInfoCard(roomWithHotel = roomWithHotel)
 
-            // Hotel Info Card
             HotelInfoCard(hotel = roomWithHotel.hotel)
 
-            // Date Selection Card
             DateSelectionCard(
                 viewModel = viewModel,
                 availabilityState = availabilityState,
@@ -96,7 +118,6 @@ fun RoomDetailScreen(
                 selectedCheckOut = selectedCheckOut
             )
 
-            // Booking Summary Card (when dates are selected)
             if (selectedCheckIn != null && selectedCheckOut != null) {
                 BookingSummaryCard(
                     room = roomWithHotel.room,
@@ -108,7 +129,6 @@ fun RoomDetailScreen(
         }
     }
 
-    // Booking Dialog
     if (showBookingDialog) {
         BookingDialog(
             viewModel = viewModel,
@@ -118,13 +138,12 @@ fun RoomDetailScreen(
         )
     }
 
-    // Success Dialog
     bookingState.data?.let { booking ->
         BookingSuccessDialog(
             booking = booking,
             onDismiss = {
                 viewModel.clearBookingState()
-                onBackClick() // Go back to rooms list
+                onBackClick()
             }
         )
     }
@@ -164,7 +183,6 @@ private fun RoomInfoCard(roomWithHotel: RoomWithHotel) {
                     }
                 }
 
-                // Availability indicator
                 Surface(
                     color = if (room.isAvailable) SuccessGreen else ErrorRed,
                     shape = RoundedCornerShape(16.dp)
@@ -181,7 +199,6 @@ private fun RoomInfoCard(roomWithHotel: RoomWithHotel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Price
             Row(
                 verticalAlignment = Alignment.Bottom
             ) {
@@ -221,7 +238,6 @@ private fun HotelInfoCard(hotel: Hotel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Hotel name and stars
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -245,7 +261,6 @@ private fun HotelInfoCard(hotel: Hotel) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Address
             Row(
                 verticalAlignment = Alignment.Top
             ) {
@@ -273,7 +288,6 @@ private fun HotelInfoCard(hotel: Hotel) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Email
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -338,7 +352,6 @@ private fun DateSelectionCard(
                 }
 
                 else -> {
-                    // Date selection UI
                     SimpleDatePicker(
                         viewModel = viewModel,
                         selectedCheckIn = selectedCheckIn,
@@ -360,7 +373,6 @@ private fun SimpleDatePicker(
     var showCheckOutPicker by remember { mutableStateOf(false) }
 
     Column {
-        // Check-in date
         OutlinedButton(
             onClick = { showCheckInPicker = true },
             modifier = Modifier.fillMaxWidth()
@@ -380,7 +392,6 @@ private fun SimpleDatePicker(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Check-out date
         OutlinedButton(
             onClick = { showCheckOutPicker = true },
             modifier = Modifier.fillMaxWidth(),
@@ -399,24 +410,20 @@ private fun SimpleDatePicker(
             }
         }
 
-        // Available dates info
-        if (selectedCheckIn != null || selectedCheckOut != null) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Surface(
-                color = InfoBlue.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = "💡 Solo se muestran las fechas disponibles para reserva",
-                    modifier = Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = InfoBlue
-                )
-            }
+        Spacer(modifier = Modifier.height(12.dp))
+        Surface(
+            color = InfoBlue.copy(alpha = 0.1f),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Text(
+                text = "💡 Solo se muestran las fechas disponibles para reserva",
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = InfoBlue
+            )
         }
     }
 
-    // Simple date picker dialogs (in a real implementation, you'd use a proper date picker)
     if (showCheckInPicker) {
         SimpleDatePickerDialog(
             title = "Fecha de Entrada",
@@ -470,47 +477,51 @@ private fun SimpleDatePickerDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Show next 30 available dates
                 val today = LocalDate.now()
                 val availableDatesToShow = if (isCheckOut) {
-                    availableDates.filter { date ->
-                        viewModel.canSelectCheckOutDate(date)
-                    }.take(15)
+                    availableDates.filter { date -> viewModel.canSelectCheckOutDate(date) }
                 } else {
-                    availableDates.filter { date ->
-                        date >= today
-                    }.take(15)
+                    availableDates.filter { date -> date >= today }
                 }
 
-                if (availableDatesToShow.isEmpty()) {
-                    Text(
-                        text = "No hay fechas disponibles",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = OnSurfaceLight.copy(alpha = 0.7f)
-                    )
-                } else {
-                    availableDatesToShow.chunked(2).forEach { dateRow ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            dateRow.forEach { date ->
-                                OutlinedButton(
-                                    onClick = { onDateSelected(date) },
-                                    modifier = Modifier.weight(1f)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    if (availableDatesToShow.isEmpty()) {
+                        Text(
+                            text = "No hay fechas disponibles",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = OnSurfaceLight.copy(alpha = 0.7f)
+                        )
+                    } else {
+                        Column {
+
+                            availableDatesToShow.chunked(2).forEach { dateRow ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text(
-                                        text = date.format(DateTimeFormatter.ofPattern("dd/MM")),
-                                        fontSize = 12.sp
-                                    )
+                                    dateRow.forEach { date ->
+                                        OutlinedButton(
+                                            onClick = { onDateSelected(date) },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = date.format(DateTimeFormatter.ofPattern("dd/MM")),
+                                                fontSize = 12.sp
+                                            )
+                                        }
+                                    }
+                                    if (dateRow.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
                                 }
-                            }
-                            // Fill remaining space if odd number of dates
-                            if (dateRow.size == 1) {
-                                Spacer(modifier = Modifier.weight(1f))
+                                Spacer(modifier = Modifier.height(4.dp))
                             }
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
 
@@ -554,7 +565,6 @@ private fun BookingSummaryCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Dates
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -579,7 +589,6 @@ private fun BookingSummaryCard(
 
             Divider(modifier = Modifier.padding(vertical = 12.dp))
 
-            // Pricing
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -641,7 +650,6 @@ private fun BookingDialog(
                     .padding(20.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -661,7 +669,6 @@ private fun BookingDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Form fields
                 OutlinedTextField(
                     value = bookingForm.guestName,
                     onValueChange = { viewModel.updateBookingFormField(BookingFormField.GUEST_NAME, it) },
@@ -674,7 +681,11 @@ private fun BookingDialog(
 
                 OutlinedTextField(
                     value = bookingForm.guestDni,
-                    onValueChange = { viewModel.updateBookingFormField(BookingFormField.GUEST_DNI, it) },
+                    onValueChange = { input ->
+                        if (input.length <= 10 && input.all { it.isDigit() }) {
+                            viewModel.updateBookingFormField(BookingFormField.GUEST_DNI, input)
+                        }
+                    },
                     label = { Text("Cédula *") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
@@ -696,7 +707,11 @@ private fun BookingDialog(
 
                 OutlinedTextField(
                     value = bookingForm.guestPhone,
-                    onValueChange = { viewModel.updateBookingFormField(BookingFormField.GUEST_PHONE, it) },
+                    onValueChange = { input ->
+                        if (input.length <= 13 && input.all { it.isDigit() }) {
+                            viewModel.updateBookingFormField(BookingFormField.GUEST_PHONE, input)
+                        }
+                    },
                     label = { Text("Teléfono (opcional)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
@@ -715,7 +730,6 @@ private fun BookingDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Booking summary
                 Surface(
                     color = LightPink,
                     shape = RoundedCornerShape(8.dp)
@@ -752,7 +766,6 @@ private fun BookingDialog(
                     }
                 }
 
-                // Error message
                 if (bookingState.error != null) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
@@ -764,7 +777,6 @@ private fun BookingDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Action buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -821,7 +833,6 @@ private fun BookingSuccessDialog(
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Success icon
                 Surface(
                     color = SuccessGreen,
                     shape = RoundedCornerShape(50.dp)
@@ -855,7 +866,6 @@ private fun BookingSuccessDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Booking details
                 Surface(
                     color = LightPink,
                     shape = RoundedCornerShape(8.dp)

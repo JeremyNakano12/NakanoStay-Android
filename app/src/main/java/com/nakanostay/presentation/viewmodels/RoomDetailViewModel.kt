@@ -2,10 +2,18 @@ package com.nakanostay.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nakanostay.data.models.*
+import com.nakanostay.data.models.BookingFormField
+import com.nakanostay.data.models.Booking
+import com.nakanostay.data.models.BookingRequest
+import com.nakanostay.data.models.BookingDetailRequest
+import com.nakanostay.data.models.RoomAvailability
+import com.nakanostay.data.models.RoomWithHotel
+import com.nakanostay.data.models.UiState
 import com.nakanostay.data.repository.BookingRepository
 import com.nakanostay.data.repository.RoomRepository
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
