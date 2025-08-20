@@ -23,6 +23,8 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -637,6 +639,7 @@ private fun BookingDialog(
     onDismiss: () -> Unit
 ) {
     val bookingForm by viewModel.bookingForm.collectAsStateWithLifecycle()
+    val dniValidationState by viewModel.dniValidationState.collectAsStateWithLifecycle()
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -679,18 +682,92 @@ private fun BookingDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = bookingForm.guestDni,
-                    onValueChange = { input ->
-                        if (input.length <= 10 && input.all { it.isDigit() }) {
-                            viewModel.updateBookingFormField(BookingFormField.GUEST_DNI, input)
+                // Campo de cédula con validación en tiempo real
+                Column {
+                    OutlinedTextField(
+                        value = bookingForm.guestDni,
+                        onValueChange = { input ->
+                            if (input.length <= 10 && input.all { it.isDigit() }) {
+                                viewModel.updateBookingFormField(BookingFormField.GUEST_DNI, input)
+                            }
+                        },
+                        label = { Text("Cédula ecuatoriana *") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("1234567890") },
+                        trailingIcon = {
+                            when {
+                                bookingForm.guestDni.isEmpty() -> null
+                                dniValidationState.isValidating -> {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = PrimaryPurple
+                                    )
+                                }
+                                dniValidationState.isValid == true -> {
+                                    Icon(
+                                        imageVector = Icons.Filled.CheckCircle,
+                                        contentDescription = "Cédula válida",
+                                        tint = SuccessGreen
+                                    )
+                                }
+                                dniValidationState.isValid == false -> {
+                                    Icon(
+                                        imageVector = Icons.Filled.Error,
+                                        contentDescription = "Cédula inválida",
+                                        tint = ErrorRed
+                                    )
+                                }
+                                else -> null
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = when {
+                                dniValidationState.isValid == true -> SuccessGreen
+                                dniValidationState.isValid == false -> ErrorRed
+                                else -> PrimaryPurple
+                            },
+                            unfocusedBorderColor = when {
+                                dniValidationState.isValid == true -> SuccessGreen
+                                dniValidationState.isValid == false -> ErrorRed
+                                else -> OnSurfaceLight.copy(alpha = 0.3f)
+                            }
+                        ),
+                        supportingText = {
+                            when {
+                                dniValidationState.errorMessage != null -> {
+                                    Text(
+                                        text = dniValidationState.errorMessage!!,
+                                        color = ErrorRed,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                dniValidationState.isValid == true -> {
+                                    Text(
+                                        text = "✓ Cédula ecuatoriana válida",
+                                        color = SuccessGreen,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                bookingForm.guestDni.isNotEmpty() && bookingForm.guestDni.length < 10 -> {
+                                    Text(
+                                        text = "Ingrese 10 dígitos",
+                                        color = OnSurfaceLight.copy(alpha = 0.6f),
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                else -> {
+                                    Text(
+                                        text = "Ejemplo: 1234567890",
+                                        color = OnSurfaceLight.copy(alpha = 0.6f),
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
                         }
-                    },
-                    label = { Text("Cédula *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    placeholder = { Text("1234567890") }
-                )
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -738,77 +815,78 @@ private fun BookingDialog(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "Resumen",
-                            style = MaterialTheme.typography.titleMedium,
+                            text = "Información importante:",
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
-
                         Spacer(modifier = Modifier.height(8.dp))
-
-                        Text("Habitación: ${roomWithHotel.room.roomNumber}")
-                        Text("Hotel: ${roomWithHotel.hotel.name}")
-
-                        bookingForm.checkIn?.let { checkIn ->
-                            bookingForm.checkOut?.let { checkOut ->
-                                val nights = ChronoUnit.DAYS.between(checkIn, checkOut).toInt()
-                                val total = roomWithHotel.room.pricePerNight.multiply(nights.toBigDecimal())
-
-                                Text("Fechas: ${checkIn.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))} - ${checkOut.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}")
-                                Text("$nights noche${if (nights > 1) "s" else ""}")
-                                Text(
-                                    text = "Total: $total",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AccentPurple
-                                )
-                            }
-                        }
+                        Text(
+                            text = "• La cédula debe ser válida Ecuatoriana\n• Recibirás confirmación por email\n• Presenta tu cédula al hacer check-in",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OnSurfaceLight.copy(alpha = 0.8f)
+                        )
                     }
-                }
-
-                if (bookingState.error != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = bookingState.error,
-                        color = ErrorRed,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        enabled = !bookingState.isLoading
-                    ) {
-                        Text("Cancelar")
+                when {
+                    bookingState.isLoading -> {
+                        Button(
+                            onClick = { },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = false,
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Creando reserva...")
+                        }
                     }
+                    else -> {
+                        Button(
+                            onClick = { viewModel.createBooking() },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = bookingForm.guestName.isNotBlank() &&
+                                    bookingForm.guestDni.isNotBlank() &&
+                                    dniValidationState.isValid == true &&
+                                    bookingForm.guestEmail.isNotBlank() &&
+                                    bookingForm.checkIn != null &&
+                                    bookingForm.checkOut != null &&
+                                    bookingForm.guests > 0,
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)
+                        ) {
+                            Text("Confirmar Reserva")
+                        }
+                    }
+                }
 
-                    Button(
-                        onClick = viewModel::createBooking,
-                        modifier = Modifier.weight(1f),
-                        enabled = !bookingState.isLoading,
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)
+                // Error message
+                bookingState.error?.let { error ->
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        color = ErrorRed.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        if (bookingState.isLoading) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
-                                Text("Creando...")
-                            }
-                        } else {
-                            Text("Reservar")
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = null,
+                                tint = ErrorRed,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = error,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = ErrorRed
+                            )
                         }
                     }
                 }

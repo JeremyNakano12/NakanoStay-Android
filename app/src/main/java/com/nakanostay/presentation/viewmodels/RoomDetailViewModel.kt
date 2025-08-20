@@ -23,36 +23,32 @@ class RoomDetailViewModel(
     private val bookingRepository: BookingRepository
 ) : ViewModel() {
 
-    // Current room with hotel
     private val _roomWithHotel = MutableStateFlow<RoomWithHotel?>(null)
     val roomWithHotel: StateFlow<RoomWithHotel?> = _roomWithHotel.asStateFlow()
 
-    // Room availability state
     private val _availabilityState = MutableStateFlow(UiState<RoomAvailability>())
     val availabilityState: StateFlow<UiState<RoomAvailability>> = _availabilityState.asStateFlow()
 
-    // Booking creation state
     private val _bookingState = MutableStateFlow(UiState<Booking>())
     val bookingState: StateFlow<UiState<Booking>> = _bookingState.asStateFlow()
 
-    // Selected dates for booking
     private val _selectedCheckIn = MutableStateFlow<LocalDate?>(null)
     val selectedCheckIn: StateFlow<LocalDate?> = _selectedCheckIn.asStateFlow()
 
     private val _selectedCheckOut = MutableStateFlow<LocalDate?>(null)
     val selectedCheckOut: StateFlow<LocalDate?> = _selectedCheckOut.asStateFlow()
 
-    // Available dates for selection
     private val _availableDates = MutableStateFlow<List<LocalDate>>(emptyList())
     val availableDates: StateFlow<List<LocalDate>> = _availableDates.asStateFlow()
 
-    // Booking form data
     private val _bookingForm = MutableStateFlow(BookingFormData())
     val bookingForm: StateFlow<BookingFormData> = _bookingForm.asStateFlow()
 
-    // Show booking dialog state
     private val _showBookingDialog = MutableStateFlow(false)
     val showBookingDialog: StateFlow<Boolean> = _showBookingDialog.asStateFlow()
+
+    private val _dniValidationState = MutableStateFlow(DniValidationState())
+    val dniValidationState: StateFlow<DniValidationState> = _dniValidationState.asStateFlow()
 
     fun setRoomWithHotel(roomWithHotel: RoomWithHotel) {
         _roomWithHotel.value = roomWithHotel
@@ -72,7 +68,6 @@ class RoomDetailViewModel(
                     val availability = result.getOrNull()
                     _availabilityState.value = UiState(data = availability)
 
-                    // Convert available date strings to LocalDate objects
                     availability?.let { avail ->
                         val dates = avail.availableDates.map { dateStr ->
                             LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE)
@@ -90,7 +85,6 @@ class RoomDetailViewModel(
 
     fun selectCheckInDate(date: LocalDate) {
         _selectedCheckIn.value = date
-        // Clear check-out if it's before or same as check-in
         _selectedCheckOut.value?.let { checkOut ->
             if (checkOut <= date) {
                 _selectedCheckOut.value = null
@@ -108,7 +102,10 @@ class RoomDetailViewModel(
         val currentForm = _bookingForm.value
         val updatedForm = when (field) {
             BookingFormField.GUEST_NAME -> currentForm.copy(guestName = value)
-            BookingFormField.GUEST_DNI -> currentForm.copy(guestDni = value)
+            BookingFormField.GUEST_DNI -> {
+                validateDniInRealTime(value)
+                currentForm.copy(guestDni = value)
+            }
             BookingFormField.GUEST_EMAIL -> currentForm.copy(guestEmail = value)
             BookingFormField.GUEST_PHONE -> currentForm.copy(guestPhone = value)
             BookingFormField.GUESTS -> {
@@ -117,6 +114,72 @@ class RoomDetailViewModel(
             }
         }
         _bookingForm.value = updatedForm
+    }
+
+    private fun validateDniInRealTime(dni: String) {
+        when {
+            dni.isEmpty() -> {
+                _dniValidationState.value = DniValidationState()
+            }
+            dni.length < 10 -> {
+                _dniValidationState.value = DniValidationState(
+                    isValidating = false,
+                    isValid = false,
+                    errorMessage = "La cédula debe tener 10 dígitos"
+                )
+            }
+            dni.length == 10 -> {
+                val validationResult = validateEcuadorianDni(dni)
+                _dniValidationState.value = DniValidationState(
+                    isValidating = false,
+                    isValid = validationResult.isValid,
+                    errorMessage = validationResult.errorMessage
+                )
+            }
+            else -> {
+                _dniValidationState.value = DniValidationState(
+                    isValidating = false,
+                    isValid = false,
+                    errorMessage = "La cédula no puede tener más de 10 dígitos"
+                )
+            }
+        }
+    }
+
+    private fun validateEcuadorianDni(dni: String): DniValidationResult {
+        if (!dni.matches("^[0-9]{10}$".toRegex())) {
+            return DniValidationResult(false, "La cédula debe contener solo números")
+        }
+
+        val province = dni.substring(0, 2).toInt()
+        if (province < 1 || province > 24) {
+            return DniValidationResult(false, "Código de provincia inválido")
+        }
+
+        val thirdDigit = dni[2].toString().toInt()
+        if (thirdDigit > 6) {
+            return DniValidationResult(false, "Tercer dígito inválido para persona natural")
+        }
+
+        val coefficients = intArrayOf(2, 1, 2, 1, 2, 1, 2, 1, 2)
+        var sum = 0
+
+        for (i in 0..8) {
+            var product = dni[i].toString().toInt() * coefficients[i]
+            if (product > 9) {
+                product -= 9
+            }
+            sum += product
+        }
+
+        val verifierDigit = dni[9].toString().toInt()
+        val calculatedDigit = if (sum % 10 == 0) 0 else 10 - (sum % 10)
+
+        return if (verifierDigit == calculatedDigit) {
+            DniValidationResult(true, null)
+        } else {
+            DniValidationResult(false, "Cédula ecuatoriana inválida")
+        }
     }
 
     private fun updateBookingForm() {
@@ -237,4 +300,15 @@ data class BookingFormData(
     val checkIn: LocalDate? = null,
     val checkOut: LocalDate? = null,
     val guests: Int = 1
+)
+
+data class DniValidationState(
+    val isValidating: Boolean = false,
+    val isValid: Boolean? = null,
+    val errorMessage: String? = null
+)
+
+private data class DniValidationResult(
+    val isValid: Boolean,
+    val errorMessage: String?
 )
