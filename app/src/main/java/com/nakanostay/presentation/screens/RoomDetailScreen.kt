@@ -56,6 +56,9 @@ import com.nakanostay.ui.theme.SecondaryPink
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +72,7 @@ fun RoomDetailScreen(
     val selectedCheckIn by viewModel.selectedCheckIn.collectAsStateWithLifecycle()
     val selectedCheckOut by viewModel.selectedCheckOut.collectAsStateWithLifecycle()
     val showBookingDialog by viewModel.showBookingDialog.collectAsStateWithLifecycle()
+    val emailError by viewModel.emailError.collectAsStateWithLifecycle()
 
     LaunchedEffect(roomWithHotel) {
         viewModel.setRoomWithHotel(roomWithHotel)
@@ -136,6 +140,7 @@ fun RoomDetailScreen(
             viewModel = viewModel,
             roomWithHotel = roomWithHotel,
             bookingState = bookingState,
+            emailError = emailError,
             onDismiss = viewModel::hideBookingDialog
         )
     }
@@ -636,6 +641,7 @@ private fun BookingDialog(
     viewModel: RoomDetailViewModel,
     roomWithHotel: RoomWithHotel,
     bookingState: UiState<Booking>,
+    emailError: String?,
     onDismiss: () -> Unit
 ) {
     val bookingForm by viewModel.bookingForm.collectAsStateWithLifecycle()
@@ -773,11 +779,26 @@ private fun BookingDialog(
 
                 OutlinedTextField(
                     value = bookingForm.guestEmail,
-                    onValueChange = { viewModel.updateBookingFormField(BookingFormField.GUEST_EMAIL, it) },
+                    onValueChange = {
+                        viewModel.updateBookingFormField(BookingFormField.GUEST_EMAIL, it)
+                        viewModel.validateEmailInRealTime(it)
+                    },
                     label = { Text("Email *") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = { Text("ejemplo@correo.com") }
+                    placeholder = { Text("ejemplo@correo.com") },
+                    isError = emailError != null,
+                    supportingText = emailError?.let {
+                        { Text(text = it, color = ErrorRed) }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = if (emailError != null) ErrorRed
+                        else if (bookingForm.guestEmail.isNotEmpty() && emailError == null) SuccessGreen
+                        else PrimaryPurple,
+                        unfocusedBorderColor = if (emailError != null) ErrorRed
+                        else if (bookingForm.guestEmail.isNotEmpty() && emailError == null) SuccessGreen
+                        else PrimaryPurple.copy(alpha = 0.6f)
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))

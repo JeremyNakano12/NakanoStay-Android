@@ -1,5 +1,6 @@
 package com.nakanostay.presentation.viewmodels
 
+import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nakanostay.data.models.BookingFormField
@@ -11,6 +12,8 @@ import com.nakanostay.data.models.RoomWithHotel
 import com.nakanostay.data.models.UiState
 import com.nakanostay.data.repository.BookingRepository
 import com.nakanostay.data.repository.RoomRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +49,31 @@ class RoomDetailViewModel(
 
     private val _showBookingDialog = MutableStateFlow(false)
     val showBookingDialog: StateFlow<Boolean> = _showBookingDialog.asStateFlow()
+
+    private var emailValidationJob: Job? = null
+    private val _emailError = MutableStateFlow<String?>(null)
+    val emailError: StateFlow<String?> = _emailError.asStateFlow()
+
+    fun validateEmailInRealTime(email: String) {
+        emailValidationJob?.cancel()
+
+        if (email.isEmpty()) {
+            _emailError.value = null
+            return
+        }
+
+        emailValidationJob = viewModelScope.launch {
+            delay(500) // Espera 500ms después de que el usuario deje de escribir
+
+            val error = when {
+                !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Formato de email inválido"
+                email.length > 100 -> "El email no puede exceder 100 caracteres"
+                else -> null
+            }
+
+            _emailError.value = error
+        }
+    }
 
     private val _dniValidationState = MutableStateFlow(DniValidationState())
     val dniValidationState: StateFlow<DniValidationState> = _dniValidationState.asStateFlow()
