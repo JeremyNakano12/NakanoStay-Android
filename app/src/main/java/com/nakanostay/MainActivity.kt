@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Hotel
@@ -24,17 +25,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.nakanostay.data.models.RoomWithHotel
-import com.nakanostay.data.models.Hotel
 import com.nakanostay.data.network.NetworkModule
 import com.nakanostay.data.repository.*
-import com.nakanostay.data.auth.SupabaseAuthService
 import com.nakanostay.presentation.screens.*
 import com.nakanostay.presentation.viewmodels.*
 import com.nakanostay.ui.theme.NakanostayTheme
@@ -46,7 +45,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize network module
         networkModule = NetworkModule(this)
 
         enableEdgeToEdge()
@@ -64,7 +62,6 @@ fun NakanoStayApp(
 ) {
     val navController = rememberNavController()
 
-    // Create repositories
     val hotelRepository = HotelRepository(networkModule.apiService)
     val roomRepository = RoomRepository(networkModule.apiService)
     val bookingRepository = BookingRepository(networkModule.apiService)
@@ -74,10 +71,8 @@ fun NakanoStayApp(
         networkModule
     )
 
-    // Shared ViewModel for navigation data
     val sharedDataViewModel: SharedDataViewModel = viewModel()
 
-    // Bottom navigation items
     val bottomNavItems = listOf(
         BottomNavItem.Rooms,
         BottomNavItem.BookingSearch
@@ -89,7 +84,6 @@ fun NakanoStayApp(
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentDestination = navBackStackEntry?.destination
 
-            // Only show bottom bar on main screens (not admin screens)
             if (currentDestination?.route in listOf("rooms", "booking_search")) {
                 NavigationBar {
                     bottomNavItems.forEach { item ->
@@ -117,12 +111,10 @@ fun NakanoStayApp(
             startDestination = "rooms",
             modifier = Modifier.padding(innerPadding)
         ) {
-            // Rooms List Screen
             composable("rooms") {
                 val roomsViewModel: RoomsViewModel = viewModel {
                     RoomsViewModel(roomWithHotelRepository)
                 }
-                /////
 
                 RoomsScreen(
                     viewModel = roomsViewModel,
@@ -140,13 +132,11 @@ fun NakanoStayApp(
                 )
             }
 
-            // Room Detail Screen
             composable("room_detail") {
                 val roomDetailViewModel: RoomDetailViewModel = viewModel {
                     RoomDetailViewModel(roomRepository, bookingRepository)
                 }
 
-                // Get the selected room from shared ViewModel
                 val selectedRoom by sharedDataViewModel.selectedRoomWithHotel.collectAsStateWithLifecycle()
 
                 selectedRoom?.let { roomWithHotel ->
@@ -159,7 +149,6 @@ fun NakanoStayApp(
                         }
                     )
                 } ?: run {
-                    // Fallback if no room is selected (shouldn't happen in normal flow)
                     RoomDetailErrorScreen(
                         onBackClick = {
                             navController.popBackStack()
@@ -168,7 +157,6 @@ fun NakanoStayApp(
                 }
             }
 
-            // Booking Search Screen
             composable("booking_search") {
                 val bookingSearchViewModel: BookingSearchViewModel = viewModel {
                     BookingSearchViewModel(bookingRepository, roomRepository)
@@ -179,7 +167,6 @@ fun NakanoStayApp(
                 )
             }
 
-            // Admin Login Screen
             composable("admin_login") {
                 val adminLoginViewModel: AdminLoginViewModel = viewModel {
                     AdminLoginViewModel(authRepository)
@@ -191,16 +178,13 @@ fun NakanoStayApp(
                         navController.popBackStack()
                     },
                     onLoginSuccess = {
-                        // Navigate to admin hotels screen
                         navController.navigate("admin_hotels") {
-                            // Clear the login screen from back stack
                             popUpTo("admin_login") { inclusive = true }
                         }
                     }
                 )
             }
 
-            // Admin Hotels Screen
             composable("admin_hotels") {
                 val adminHotelsViewModel: AdminHotelsViewModel = viewModel {
                     AdminHotelsViewModel(networkModule.apiService)
@@ -210,58 +194,97 @@ fun NakanoStayApp(
                     viewModel = adminHotelsViewModel,
                     onBackClick = {
                         navController.navigate("rooms") {
-                            // Clear admin screens from back stack
                             popUpTo("rooms") { inclusive = false }
                         }
                     },
                     onHotelClick = { hotel ->
-                        // Navigate to rooms screen filtered by this hotel
                         sharedDataViewModel.setSelectedHotel(hotel)
                         navController.navigate("admin_rooms")
                     },
+                    onBookingsClick = {
+                        navController.navigate("admin_bookings")
+                    },
                     onLogout = {
-                        // Logout and return to main screen
-                        adminHotelsViewModel.clearError() // Clear any errors
+                        adminHotelsViewModel.clearError()
                         authRepository.logout()
                         navController.navigate("rooms") {
-                            // Clear all admin screens from back stack
                             popUpTo("rooms") { inclusive = false }
                         }
                     }
                 )
             }
 
-            // Admin Rooms Screen
             composable("admin_rooms") {
                 val adminRoomsViewModel: AdminRoomsViewModel = viewModel {
                     AdminRoomsViewModel(networkModule.apiService)
                 }
 
-                // Apply hotel filter if coming from hotel selection
                 val selectedHotel by sharedDataViewModel.selectedHotel.collectAsStateWithLifecycle()
                 LaunchedEffect(selectedHotel) {
                     selectedHotel?.let { hotel ->
                         adminRoomsViewModel.updateSelectedHotel(hotel)
-                        // Clear the selected hotel to avoid re-applying filter
-                        sharedDataViewModel.clearSelectedHotel()
                     }
                 }
 
                 AdminRoomsScreen(
                     viewModel = adminRoomsViewModel,
                     onBackClick = {
+                        sharedDataViewModel.clearSelectedHotel()
                         navController.popBackStack()
                     },
                     onRoomClick = { room ->
-                        // TODO: Navigate to room details in next phase
-                        // For now, just show a toast or do nothing
                     },
                     onLogout = {
-                        // Logout and return to main screen
-                        adminRoomsViewModel.clearError() // Clear any errors
+                        authRepository.logout()
+                        sharedDataViewModel.clearSelectedHotel()
+                        navController.navigate("rooms") {
+                            popUpTo("rooms") { inclusive = false }
+                        }
+                    }
+                )
+            }
+
+            composable("admin_bookings") {
+                val adminBookingsViewModel: AdminBookingsViewModel = viewModel {
+                    AdminBookingsViewModel(networkModule.apiService)
+                }
+
+                AdminBookingsScreen(
+                    viewModel = adminBookingsViewModel,
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+                    onBookingClick = { booking ->
+                        adminBookingsViewModel.setSelectedBooking(booking)
+                        navController.navigate("booking_details")
+                    },
+                    onLogout = {
                         authRepository.logout()
                         navController.navigate("rooms") {
-                            // Clear all admin screens from back stack
+                            popUpTo("rooms") { inclusive = false }
+                        }
+                    }
+                )
+            }
+
+            composable("booking_details") {
+                val parentEntry = remember(navController.currentBackStackEntry) {
+                    navController.getBackStackEntry("admin_bookings")
+                }
+                val adminBookingsViewModel: AdminBookingsViewModel = viewModel(parentEntry) {
+                    AdminBookingsViewModel(networkModule.apiService)
+                }
+
+                BookingDetailsScreen(
+                    viewModel = adminBookingsViewModel,
+                    onBackClick = {
+                        adminBookingsViewModel.clearSelectedBooking()
+                        navController.popBackStack()
+                    },
+                    onLogout = {
+                        authRepository.logout()
+                        adminBookingsViewModel.clearSelectedBooking()
+                        navController.navigate("rooms") {
                             popUpTo("rooms") { inclusive = false }
                         }
                     }
@@ -271,60 +294,70 @@ fun NakanoStayApp(
     }
 }
 
-// Navigation items for bottom bar
-sealed class BottomNavItem(
-    val route: String,
-    val title: String,
-    val icon: ImageVector
-) {
-    object Rooms : BottomNavItem("rooms", "Habitaciones", Icons.Default.Hotel)
-    object BookingSearch : BottomNavItem("booking_search", "Mis Reservas", Icons.Default.Search)
+sealed class BottomNavItem(val route: String, val icon: ImageVector, val title: String) {
+    object Rooms : BottomNavItem("rooms", Icons.Default.Hotel, "Hoteles")
+    object BookingSearch : BottomNavItem("booking_search", Icons.Default.Search, "Reservas")
 }
 
-// Error screen when no room is selected
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoomDetailErrorScreen(
-    onBackClick: () -> Unit
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Error") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
+fun RoomDetailErrorScreen(onBackClick: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                modifier = Modifier.padding(16.dp)
+            )
+            Text(
+                text = "Error: No se encontró la habitación",
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onBackClick) {
                 Icon(
-                    imageVector = Icons.Default.Error,
-                    contentDescription = null,
-                    modifier = Modifier.padding(16.dp)
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = null
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Volver")
+            }
+        }
+    }
+}
 
-                Text(
-                    text = "No se pudo cargar la información de la habitación",
-                    style = MaterialTheme.typography.titleMedium,
-                    textAlign = TextAlign.Center
+@Composable
+fun BookingDetailErrorScreen(onBackClick: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                modifier = Modifier.padding(16.dp)
+            )
+            Text(
+                text = "Error: No se encontró la reserva",
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = null
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(onClick = onBackClick) {
-                    Text("Volver a habitaciones")
-                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Volver")
             }
         }
     }

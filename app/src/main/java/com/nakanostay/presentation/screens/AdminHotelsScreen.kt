@@ -1,19 +1,45 @@
 package com.nakanostay.presentation.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LocationCity
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.Hotel
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -21,7 +47,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nakanostay.data.models.Hotel
 import com.nakanostay.presentation.viewmodels.AdminHotelsViewModel
-import com.nakanostay.ui.theme.*
+import com.nakanostay.ui.theme.AccentPurple
+import com.nakanostay.ui.theme.OnSurfaceLight
+import com.nakanostay.ui.theme.ErrorRed
+import com.nakanostay.ui.theme.PrimaryPurple
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +58,7 @@ fun AdminHotelsScreen(
     viewModel: AdminHotelsViewModel,
     onBackClick: () -> Unit,
     onHotelClick: (Hotel) -> Unit,
+    onBookingsClick: () -> Unit,
     onLogout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -82,14 +112,62 @@ fun AdminHotelsScreen(
                     EmptyHotelsState()
                 }
                 else -> {
-                    HotelsList(
-                        hotels = uiState.filteredHotels,
-                        onHotelClick = onHotelClick,
-                        onEditClick = { hotel -> viewModel.setEditingHotel(hotel) },
-                        onDeleteClick = { hotel -> showDeleteDialog = hotel },
-                        totalCount = uiState.hotels.size,
-                        filteredCount = uiState.filteredHotels.size
-                    )
+                    Column {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                                .clickable { onBookingsClick() },
+                            colors = CardDefaults.cardColors(containerColor = PrimaryPurple.copy(alpha = 0.1f)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.BookmarkBorder,
+                                        contentDescription = null,
+                                        tint = PrimaryPurple,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column {
+                                        Text(
+                                            text = "Gestión de Reservas",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = PrimaryPurple
+                                        )
+                                        Text(
+                                            text = "Ver y administrar todas las reservas",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = OnSurfaceLight.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = PrimaryPurple
+                                )
+                            }
+                        }
+
+                        HotelsList(
+                            hotels = uiState.filteredHotels,
+                            onHotelClick = onHotelClick,
+                            onEditClick = { hotel -> viewModel.setEditingHotel(hotel) },
+                            onDeleteClick = { hotel -> showDeleteDialog = hotel },
+                            totalCount = uiState.hotels.size,
+                            filteredCount = uiState.filteredHotels.size
+                        )
+                    }
                 }
             }
         }
@@ -183,7 +261,6 @@ private fun AdminHotelsTopBar(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Header Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -205,18 +282,20 @@ private fun AdminHotelsTopBar(
                     )
                 }
 
-                IconButton(onClick = onLogoutClick) {
-                    Icon(
-                        imageVector = Icons.Default.Logout,
-                        contentDescription = "Cerrar Sesión",
-                        tint = Color.White
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Logout button
+                    IconButton(onClick = onLogoutClick) {
+                        Icon(
+                            imageVector = Icons.Default.Logout,
+                            contentDescription = "Cerrar Sesión",
+                            tint = Color.White
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Search and Filter Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -225,7 +304,7 @@ private fun AdminHotelsTopBar(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Buscar hoteles por nombre...") },
+                    placeholder = { Text("Buscar hoteles...") },
                     leadingIcon = {
                         Icon(Icons.Default.Search, contentDescription = "Buscar")
                     },
@@ -241,7 +320,6 @@ private fun AdminHotelsTopBar(
                         unfocusedBorderColor = Color.White.copy(alpha = 0.7f),
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        cursorColor = Color.White,
                         focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
                         unfocusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
                         focusedLeadingIconColor = Color.White,
@@ -249,27 +327,45 @@ private fun AdminHotelsTopBar(
                         focusedTrailingIconColor = Color.White,
                         unfocusedTrailingIconColor = Color.White.copy(alpha = 0.7f)
                     ),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true
+                    shape = RoundedCornerShape(8.dp)
                 )
 
                 Spacer(modifier = Modifier.width(8.dp))
 
                 Box {
-                    IconButton(
+                    FilterChip(
                         onClick = { expanded = true },
-                        modifier = Modifier
-                            .background(
-                                if (selectedCity != null) Color.White.copy(alpha = 0.2f) else Color.Transparent,
-                                RoundedCornerShape(8.dp)
+                        label = {
+                            Text(
+                                text = selectedCity ?: "Todas",
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filtrar por ciudad",
-                            tint = Color.White
-                        )
-                    }
+                        },
+                        selected = selectedCity != null,
+                        enabled = true,
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = Color.White.copy(alpha = 0.2f),
+                            labelColor = Color.White,
+                            selectedContainerColor = Color.White.copy(alpha = 0.3f),
+                            selectedLabelColor = Color.White
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            borderColor = Color.White.copy(alpha = 0.5f),
+                            selectedBorderColor = Color.White,
+                            selected = true,
+                            enabled = true
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
 
                     DropdownMenu(
                         expanded = expanded,
@@ -307,36 +403,31 @@ private fun AdminHotelsTopBar(
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (searchQuery.isNotEmpty()) {
-                        item {
-                            FilterChip(
-                                onClick = { onSearchQueryChange("") },
-                                label = { Text("Búsqueda: $searchQuery") },
-                                selected = true,
-                                trailingIcon = {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "Quitar filtro",
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            )
-                        }
-                    }
-
                     if (selectedCity != null) {
                         item {
                             FilterChip(
                                 onClick = { onCitySelected(null) },
-                                label = { Text("Ciudad: $selectedCity") },
+                                label = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            "Ciudad: $selectedCity",
+                                            color = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Quitar filtro",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                },
                                 selected = true,
-                                trailingIcon = {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "Quitar filtro",
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
+                                enabled = true,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color.White.copy(alpha = 0.3f),
+                                    selectedLabelColor = Color.White
+                                )
                             )
                         }
                     }
@@ -410,33 +501,100 @@ private fun HotelCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = hotel.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = PrimaryPurple,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
+                }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        repeat(hotel.stars ?: 0) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                tint = WarningOrange,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                        if ((hotel.stars ?: 0) > 0) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "${hotel.stars} estrellas",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = OnSurfaceLight.copy(alpha = 0.7f)
-                            )
-                        }
+                Row {
+                    val stars = hotel.stars ?: 0
+                    repeat(stars) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = AccentPurple,
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = OnSurfaceLight.copy(alpha = 0.6f)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = hotel.address,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OnSurfaceLight,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            hotel.city?.let { city ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationCity,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = OnSurfaceLight.copy(alpha = 0.6f)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = city,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = OnSurfaceLight.copy(alpha = 0.8f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Email,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = OnSurfaceLight.copy(alpha = 0.6f)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = hotel.email,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OnSurfaceLight.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
 
                 Row {
@@ -447,8 +605,8 @@ private fun HotelCard(
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Editar",
-                            tint = InfoBlue,
-                            modifier = Modifier.size(20.dp)
+                            tint = AccentPurple,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
@@ -460,112 +618,10 @@ private fun HotelCard(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Eliminar",
                             tint = ErrorRed,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = PrimaryPurple,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Column {
-                    Text(
-                        text = hotel.address,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (hotel.city != null) {
-                        Text(
-                            text = hotel.city,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = OnSurfaceLight.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-            }
-
-            if (hotel.email != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Email,
-                        contentDescription = null,
-                        tint = PrimaryPurple,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = hotel.email,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = OnSurfaceLight.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LoadingIndicator() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator(color = PrimaryPurple)
-    }
-}
-
-@Composable
-private fun ErrorState(
-    error: String,
-    onRetry: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = null,
-                tint = ErrorRed,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Error al cargar hoteles",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = error,
-                style = MaterialTheme.typography.bodyMedium,
-                color = OnSurfaceLight.copy(alpha = 0.7f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = onRetry,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
-            ) {
-                Text("Reintentar")
             }
         }
     }
@@ -631,6 +687,58 @@ private fun EmptyHotelsState() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = OnSurfaceLight.copy(alpha = 0.7f)
             )
+        }
+    }
+}
+
+@Composable
+private fun LoadingIndicator() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(color = PrimaryPurple)
+    }
+}
+
+@Composable
+private fun ErrorState(
+    error: String,
+    onRetry: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = ErrorRed
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Error al cargar hoteles",
+                style = MaterialTheme.typography.titleMedium,
+                color = OnSurfaceLight.copy(alpha = 0.8f)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodyMedium,
+                color = OnSurfaceLight.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
+            ) {
+                Text("Reintentar")
+            }
         }
     }
 }

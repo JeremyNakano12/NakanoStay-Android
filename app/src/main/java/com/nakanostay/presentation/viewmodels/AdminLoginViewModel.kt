@@ -2,12 +2,12 @@ package com.nakanostay.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nakanostay.BuildConfig
 import com.nakanostay.data.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-
 
 data class AdminLoginUiState(
     val email: String = "",
@@ -24,7 +24,7 @@ class AdminLoginViewModel(
     private val _uiState = MutableStateFlow(AdminLoginUiState())
     val uiState: StateFlow<AdminLoginUiState> = _uiState.asStateFlow()
 
-    private val supabaseApiKey = ""
+    private val supabaseApiKey = BuildConfig.API_KEY
 
     init {
         _uiState.value = _uiState.value.copy(

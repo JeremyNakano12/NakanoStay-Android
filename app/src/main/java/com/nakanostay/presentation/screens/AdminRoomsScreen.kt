@@ -1,19 +1,44 @@
 package com.nakanostay.presentation.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.Hotel
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.MeetingRoom
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -22,8 +47,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nakanostay.data.models.Hotel
 import com.nakanostay.data.models.Room
 import com.nakanostay.presentation.viewmodels.AdminRoomsViewModel
-import com.nakanostay.ui.theme.*
-import java.math.BigDecimal
+import com.nakanostay.ui.theme.OnSurfaceLight
+import com.nakanostay.ui.theme.ErrorRed
+import com.nakanostay.ui.theme.PrimaryPurple
+import com.nakanostay.ui.theme.SuccessGreen
+import com.nakanostay.ui.theme.WarningOrange
+import com.nakanostay.ui.theme.InfoBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,7 +132,6 @@ fun AdminRoomsScreen(
         }
     }
 
-    // Create/Edit Room Dialog
     if (uiState.showCreateDialog || uiState.editingRoom != null) {
         CreateEditRoomDialog(
             room = uiState.editingRoom,
@@ -130,7 +158,6 @@ fun AdminRoomsScreen(
         )
     }
 
-    // Logout Confirmation Dialog
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
@@ -154,7 +181,6 @@ fun AdminRoomsScreen(
         )
     }
 
-    // Delete Confirmation Dialog
     showDeleteDialog?.let { room ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
@@ -283,7 +309,12 @@ private fun AdminRoomsTopBar(
                             Text(
                                 selectedHotel?.name ?: "Todos los hoteles",
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                color = if (selectedHotel != null) {
+                                    Color.Black
+                                } else {
+                                    Color.White.copy(alpha = 0.7f)
+                                }
                             )
                         },
                         selected = selectedHotel != null,
@@ -291,9 +322,19 @@ private fun AdminRoomsTopBar(
                             Icon(
                                 Icons.Default.Hotel,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(16.dp),
+                                if (selectedHotel != null) {
+                                    Color.Black
+                                } else {
+                                    Color.White.copy(alpha = 0.7f)
+                                }
                             )
                         },
+                        border = FilterChipDefaults.filterChipBorder(
+                            selectedBorderColor = Color.White,
+                            selected = true,
+                            enabled = true
+                        ),
                         //modifier = Modifier.weight(1f)
                     )
 
@@ -334,7 +375,12 @@ private fun AdminRoomsTopBar(
                             Text(
                                 selectedRoomType ?: "Todos los tipos",
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                color = if (selectedRoomType != null) {
+                                    Color.Black
+                                } else {
+                                    Color.White.copy(alpha = 0.7f)
+                                }
                             )
                         },
                         selected = selectedRoomType != null,
@@ -342,9 +388,19 @@ private fun AdminRoomsTopBar(
                             Icon(
                                 Icons.Default.Category,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(16.dp),
+                                if (selectedRoomType != null) {
+                                    Color.Black
+                                } else {
+                                    Color.White.copy(alpha = 0.7f)
+                                }
                             )
                         },
+                        border = FilterChipDefaults.filterChipBorder(
+                            selectedBorderColor = Color.White,
+                            selected = true,
+                            enabled = true
+                        ),
                         //modifier = Modifier.weight(1f)
                     )
 

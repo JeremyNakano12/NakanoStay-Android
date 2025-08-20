@@ -2,7 +2,8 @@ package com.nakanostay.data.network
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.google.gson.*
+import com.google.gson.GsonBuilder
+import com.nakanostay.BuildConfig
 import com.nakanostay.data.api.ApiService
 import com.nakanostay.data.auth.SupabaseAuthService
 import okhttp3.Interceptor
@@ -17,7 +18,7 @@ import java.time.LocalDateTime
 class NetworkModule(private val context: Context) {
 
     private val baseUrl = "http://34.207.200.47:8080/"
-    private val supabaseUrl = ""
+    private val supabaseUrl = BuildConfig.API_URL
 
     private val sharedPreferences: SharedPreferences =
         context.getSharedPreferences("nakanostay_prefs", Context.MODE_PRIVATE)

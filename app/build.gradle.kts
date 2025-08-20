@@ -11,6 +11,7 @@ val props = gradleLocalProperties(rootDir, providers)
 android {
     namespace = "com.nakanostay"
     compileSdk = 36
+    android.buildFeatures.buildConfig = true
 
     defaultConfig {
         applicationId = "com.nakanostay"
