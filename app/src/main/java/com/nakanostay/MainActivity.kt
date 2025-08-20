@@ -31,8 +31,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nakanostay.data.models.RoomWithHotel
+import com.nakanostay.data.models.Hotel
 import com.nakanostay.data.network.NetworkModule
 import com.nakanostay.data.repository.*
+import com.nakanostay.data.auth.SupabaseAuthService
 import com.nakanostay.presentation.screens.*
 import com.nakanostay.presentation.viewmodels.*
 import com.nakanostay.ui.theme.NakanostayTheme
@@ -67,6 +69,10 @@ fun NakanoStayApp(
     val roomRepository = RoomRepository(networkModule.apiService)
     val bookingRepository = BookingRepository(networkModule.apiService)
     val roomWithHotelRepository = RoomWithHotelRepository(roomRepository, hotelRepository)
+    val authRepository = AuthRepository(
+        networkModule.supabaseAuthService,
+        networkModule
+    )
 
     // Shared ViewModel for navigation data
     val sharedDataViewModel: SharedDataViewModel = viewModel()
@@ -83,7 +89,7 @@ fun NakanoStayApp(
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentDestination = navBackStackEntry?.destination
 
-            // Only show bottom bar on main screens
+            // Only show bottom bar on main screens (not admin screens)
             if (currentDestination?.route in listOf("rooms", "booking_search")) {
                 NavigationBar {
                     bottomNavItems.forEach { item ->
@@ -116,6 +122,7 @@ fun NakanoStayApp(
                 val roomsViewModel: RoomsViewModel = viewModel {
                     RoomsViewModel(roomWithHotelRepository)
                 }
+                /////
 
                 RoomsScreen(
                     viewModel = roomsViewModel,
@@ -128,7 +135,6 @@ fun NakanoStayApp(
                         }
                     },
                     onAdminLoginClick = {
-                        // TODO: Navigate to admin login in next phase
                         navController.navigate("admin_login")
                     }
                 )
@@ -173,11 +179,91 @@ fun NakanoStayApp(
                 )
             }
 
-            // Admin Login Screen (placeholder for next phase)
+            // Admin Login Screen
             composable("admin_login") {
-                AdminLoginPlaceholderScreen(
+                val adminLoginViewModel: AdminLoginViewModel = viewModel {
+                    AdminLoginViewModel(authRepository)
+                }
+
+                AdminLoginScreen(
+                    viewModel = adminLoginViewModel,
                     onBackClick = {
                         navController.popBackStack()
+                    },
+                    onLoginSuccess = {
+                        // Navigate to admin hotels screen
+                        navController.navigate("admin_hotels") {
+                            // Clear the login screen from back stack
+                            popUpTo("admin_login") { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // Admin Hotels Screen
+            composable("admin_hotels") {
+                val adminHotelsViewModel: AdminHotelsViewModel = viewModel {
+                    AdminHotelsViewModel(networkModule.apiService)
+                }
+
+                AdminHotelsScreen(
+                    viewModel = adminHotelsViewModel,
+                    onBackClick = {
+                        navController.navigate("rooms") {
+                            // Clear admin screens from back stack
+                            popUpTo("rooms") { inclusive = false }
+                        }
+                    },
+                    onHotelClick = { hotel ->
+                        // Navigate to rooms screen filtered by this hotel
+                        sharedDataViewModel.setSelectedHotel(hotel)
+                        navController.navigate("admin_rooms")
+                    },
+                    onLogout = {
+                        // Logout and return to main screen
+                        adminHotelsViewModel.clearError() // Clear any errors
+                        authRepository.logout()
+                        navController.navigate("rooms") {
+                            // Clear all admin screens from back stack
+                            popUpTo("rooms") { inclusive = false }
+                        }
+                    }
+                )
+            }
+
+            // Admin Rooms Screen
+            composable("admin_rooms") {
+                val adminRoomsViewModel: AdminRoomsViewModel = viewModel {
+                    AdminRoomsViewModel(networkModule.apiService)
+                }
+
+                // Apply hotel filter if coming from hotel selection
+                val selectedHotel by sharedDataViewModel.selectedHotel.collectAsStateWithLifecycle()
+                LaunchedEffect(selectedHotel) {
+                    selectedHotel?.let { hotel ->
+                        adminRoomsViewModel.updateSelectedHotel(hotel)
+                        // Clear the selected hotel to avoid re-applying filter
+                        sharedDataViewModel.clearSelectedHotel()
+                    }
+                }
+
+                AdminRoomsScreen(
+                    viewModel = adminRoomsViewModel,
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+                    onRoomClick = { room ->
+                        // TODO: Navigate to room details in next phase
+                        // For now, just show a toast or do nothing
+                    },
+                    onLogout = {
+                        // Logout and return to main screen
+                        adminRoomsViewModel.clearError() // Clear any errors
+                        authRepository.logout()
+                        navController.navigate("rooms") {
+                            // Clear all admin screens from back stack
+                            popUpTo("rooms") { inclusive = false }
+                        }
                     }
                 )
             }
@@ -193,39 +279,6 @@ sealed class BottomNavItem(
 ) {
     object Rooms : BottomNavItem("rooms", "Habitaciones", Icons.Default.Hotel)
     object BookingSearch : BottomNavItem("booking_search", "Mis Reservas", Icons.Default.Search)
-}
-
-// Placeholder for admin login screen
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AdminLoginPlaceholderScreen(
-    onBackClick: () -> Unit
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Acceso Administrador") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Pantalla de administrador\n(Próximamente)",
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
 }
 
 // Error screen when no room is selected

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,16 +91,24 @@ fun RoomsScreen(
             )
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        PullToRefreshBox(
+            modifier = Modifier.fillMaxSize(),
+            isRefreshing = roomsState.isLoading,
+            onRefresh = viewModel::refreshRooms
+        ) {
             when {
-                roomsState.isLoading -> {
-                    LoadingState()
-                }
                 roomsState.error != null -> {
                     ErrorState(
                         error = roomsState.error!!,
                         onRetry = viewModel::refreshRooms
                     )
+                }
+                filteredRooms.isEmpty() && !roomsState.isLoading -> {
+                    if (roomsState.data.isNullOrEmpty()) {
+                        EmptyState()
+                    } else {
+                        EmptyFilterState()
+                    }
                 }
                 else -> {
                     RoomsList(
@@ -170,19 +179,29 @@ private fun TopBar(
                         unfocusedBorderColor = Color.White.copy(alpha = 0.7f),
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
+                        cursorColor = Color.White,
                         focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
                         unfocusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
                         focusedLeadingIconColor = Color.White,
                         unfocusedLeadingIconColor = Color.White.copy(alpha = 0.7f)
-                    )
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
                 )
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                IconButton(onClick = onFilterClick) {
+                IconButton(
+                    onClick = onFilterClick,
+                    modifier = Modifier
+                        .background(
+                            Color.White.copy(alpha = 0.2f),
+                            RoundedCornerShape(8.dp)
+                        )
+                ) {
                     Icon(
                         imageVector = Icons.Default.FilterList,
-                        contentDescription = "Filters",
+                        contentDescription = "Filtros",
                         tint = Color.White
                     )
                 }
@@ -191,7 +210,6 @@ private fun TopBar(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FiltersPanel(
     filters: RoomFilters,
@@ -201,9 +219,11 @@ private fun FiltersPanel(
     onFiltersUpdate: (RoomFilters) -> Unit,
     onClearFilters: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = SecondaryPink
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -220,27 +240,27 @@ private fun FiltersPanel(
                 )
 
                 TextButton(onClick = onClearFilters) {
-                    Text("Limpiar", color = AccentPurple)
+                    Text("Limpiar filtros")
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Stars filter
-            Text("Estrellas del hotel", fontWeight = FontWeight.Medium)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Text("Estrellas", fontWeight = FontWeight.Medium)
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 for (star in 1..5) {
-                    FilterChip(
-                        onClick = {
-                            val newStars = if (filters.stars == star) null else star
-                            onFiltersUpdate(filters.copy(stars = newStars))
-                        },
-                        label = { Text("$star ⭐") },
-                        selected = filters.stars == star
-                    )
+                    item {
+                        FilterChip(
+                            onClick = {
+                                val newStars = if (filters.stars == star) null else star
+                                onFiltersUpdate(filters.copy(stars = newStars))
+                            },
+                            label = { Text("$star ⭐") },
+                            selected = filters.stars == star
+                        )
+                    }
                 }
             }
 
@@ -315,34 +335,31 @@ private fun RoomsList(
     totalCount: Int,
     filteredCount: Int
 ) {
-    Column {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color.White
-        ) {
-            Text(
-                text = "Mostrando $filteredCount de $totalCount habitaciones",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = OnSurfaceLight.copy(alpha = 0.7f)
-            )
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "Mostrando $filteredCount de $totalCount habitaciones",
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OnSurfaceLight.copy(alpha = 0.7f)
+                )
+            }
         }
 
-        if (rooms.isEmpty()) {
-            EmptyState()
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(rooms) { roomWithHotel ->
-                    RoomCard(
-                        roomWithHotel = roomWithHotel,
-                        onClick = { onRoomClick(roomWithHotel) }
-                    )
-                }
-            }
+        items(rooms) { roomWithHotel ->
+            RoomCard(
+                roomWithHotel = roomWithHotel,
+                onClick = { onRoomClick(roomWithHotel) }
+            )
         }
     }
 }
@@ -426,43 +443,34 @@ private fun RoomCard(
                         color = OnSurfaceLight.copy(alpha = 0.7f)
                     )
                 }
-
-                hotel.stars?.let { stars ->
-                    Spacer(modifier = Modifier.width(8.dp))
-                    repeat(stars) {
-                        Text(
-                            text = "⭐",
-                            fontSize = 12.sp
-                        )
-                    }
-                }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "$${room.pricePerNight} / noche",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryPurple
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "$${room.pricePerNight}",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentPurple
-                    )
-                    Text(
-                        text = "por noche",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = OnSurfaceLight.copy(alpha = 0.7f)
-                    )
-                }
-
+                Text(
+                    text = "Ver detalles",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = PrimaryPurple
+                )
                 Icon(
                     imageVector = Icons.Default.ArrowForward,
-                    contentDescription = "Ver detalles",
-                    tint = PrimaryPink
+                    contentDescription = null,
+                    tint = PrimaryPurple,
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
@@ -475,17 +483,7 @@ private fun LoadingState() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator(color = PrimaryPurple)
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Cargando habitaciones...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = OnSurfaceLight.copy(alpha = 0.7f)
-            )
-        }
+        CircularProgressIndicator(color = PrimaryPurple)
     }
 }
 
@@ -549,13 +547,45 @@ private fun EmptyState() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
+                text = "No hay habitaciones disponibles",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Intenta refrescar la página deslizando hacia abajo",
+                style = MaterialTheme.typography.bodyMedium,
+                color = OnSurfaceLight.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyFilterState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.SearchOff,
+                contentDescription = null,
+                tint = OnSurfaceLight.copy(alpha = 0.5f),
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
                 text = "No se encontraron habitaciones",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Intenta ajustar tus filtros de búsqueda",
+                text = "Intenta ajustar tus filtros de búsqueda o desliza hacia abajo para refrescar",
                 style = MaterialTheme.typography.bodyMedium,
                 color = OnSurfaceLight.copy(alpha = 0.7f)
             )

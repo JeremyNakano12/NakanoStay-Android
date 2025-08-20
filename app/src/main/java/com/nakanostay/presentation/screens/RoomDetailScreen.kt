@@ -71,7 +71,7 @@ fun RoomDetailScreen(
     LaunchedEffect(roomWithHotel) {
         viewModel.setRoomWithHotel(roomWithHotel)
         // Load availability for next 3 months
-        val startDate = LocalDate.now()
+        val startDate = LocalDate.now().plusDays(1)
         val endDate = startDate.plusMonths(3)
         viewModel.loadRoomAvailability(startDate, endDate)
     }

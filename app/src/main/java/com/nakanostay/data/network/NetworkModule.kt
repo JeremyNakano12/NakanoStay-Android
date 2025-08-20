@@ -17,7 +17,7 @@ import java.time.LocalDateTime
 class NetworkModule(private val context: Context) {
 
     private val baseUrl = "http://34.207.200.47:8080/"
-    private val supabaseUrl = "https://stkykhodcmvmqrwqhrcy.supabase.co/"
+    private val supabaseUrl = ""
 
     private val sharedPreferences: SharedPreferences =
         context.getSharedPreferences("nakanostay_prefs", Context.MODE_PRIVATE)

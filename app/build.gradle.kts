@@ -1,8 +1,12 @@
+import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+val props = gradleLocalProperties(rootDir, providers)
 
 android {
     namespace = "com.nakanostay"
@@ -16,6 +20,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "API_URL", "\"${props["SUPABASE_URL"] ?: ""}\"")
+        buildConfigField("String", "API_KEY", "\"${props["API_KEY"] ?: ""}\"")
     }
 
     buildTypes {

@@ -13,8 +13,8 @@ class AuthRepository(
 
     suspend fun login(email: String, password: String, apiKey: String): Flow<Result<String>> = flow {
         try {
-            val request = LoginRequest(email, password, apiKey)
-            val response = supabaseAuthService.login(request)
+            val request = LoginRequest(email, password)
+            val response = supabaseAuthService.login(apiKey, request)
 
             if (response.isSuccessful) {
                 response.body()?.let { authResponse ->
